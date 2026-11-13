@@ -13,8 +13,15 @@ class AICA_API_Handler {
             return new WP_Error( 'no_api_key', 'Por favor, configura tu propia clave API en los ajustes del plugin para poder utilizar el asistente.' );
         }
 
-        // Limpiar espacios accidentales en la clave (muy común al hacer copy-paste por parte del usuario)
+        // Limpiar espacios accidentales en la clave
         $api_key = trim( $api_key );
+
+        // Sistema de Caché (Transients) para evitar llamadas duplicadas y ahorrar tokens
+        $cache_key   = 'aica_cache_' . md5( $action_type . '_' . $prompt );
+        $cached_resp = get_transient( $cache_key );
+        if ( false !== $cached_resp ) {
+            return $cached_resp;
+        }
 
         $url = 'https://api.openai.com/v1/chat/completions';
         
@@ -28,13 +35,13 @@ class AICA_API_Handler {
         $system_message = isset( $system_prompts[ $action_type ] ) ? $system_prompts[ $action_type ] : $system_prompts['generate'];
 
         $body = array(
-            'model'       => 'gpt-4o-mini', // Modelo rápido y económico ideal para plugins
+            'model'       => 'gpt-4o-mini',
             'messages'    => array(
                 array( 'role' => 'system', 'content' => $system_message ),
                 array( 'role' => 'user', 'content' => $prompt )
             ),
             'temperature' => 0.7,
-            'max_tokens'  => 2048, // Control de tokens para evitar abusos o bloqueos por timeout
+            'max_tokens'  => 2048,
         );
 
         $args = array(
@@ -58,17 +65,14 @@ class AICA_API_Handler {
         $body_raw      = wp_remote_retrieve_body( $response );
         $body_response = json_decode( $body_raw, true );
 
-        // Verificar si la respuesta no es un JSON válido
         if ( json_last_error() !== JSON_ERROR_NONE ) {
             error_log( 'AICA Error: JSON inválido recibido de OpenAI. Respuesta cruda: ' . $body_raw );
             return new WP_Error( 'invalid_json', 'OpenAI devolvió una respuesta no válida o el servidor no responde correctamente.' );
         }
 
-        // Gestión específica para errores de API (ej. Clave incorrecta 401, Sin saldo 429, etc.)
         if ( $status_code !== 200 ) {
             $error_message = isset( $body_response['error']['message'] ) ? $body_response['error']['message'] : 'Error desconocido en la API de OpenAI.';
             
-            // Mensaje amigable personalizado si la clave BYOK es incorrecta
             if ( $status_code === 401 ) {
                 $error_message = 'La clave API introducida es incorrecta o ha caducado. Por favor, verifica tus credenciales en los ajustes.';
             }
@@ -82,6 +86,9 @@ class AICA_API_Handler {
         if ( empty( $content ) ) {
             return new WP_Error( 'empty_response', 'La IA devolvió una respuesta vacía. Es posible que el contenido haya sido filtrado o la solicitud sea demasiado ambigua.' );
         }
+
+        // Guardar en caché durante 12 horas para optimizar peticiones idénticas
+        set_transient( $cache_key, $content, 12 * HOUR_IN_SECONDS );
 
         return $content;
     }

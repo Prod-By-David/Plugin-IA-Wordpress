@@ -21,8 +21,7 @@ class AICA_Meta_Box {
     }
 
     public function meta_box_html( $post ) {
-        // Modelo BYOK: Comprobar si el usuario ya configuró su clave API
-        $api_key = get_option( 'aica_api_key', '' );
+        $api_key      = get_option( 'aica_api_key', '' );
         $settings_url = admin_url( 'options-general.php?page=ai-content-assistant' );
 
         if ( empty( $api_key ) ) {
@@ -67,7 +66,6 @@ class AICA_Meta_Box {
                 return;
             }
 
-            // Deshabilitar botones durante el proceso para evitar peticiones duplicadas
             loading.style.display = 'block';
             generateBtn.disabled = true;
 
@@ -85,7 +83,6 @@ class AICA_Meta_Box {
                 generateBtn.disabled = false;
 
                 if (data.success) {
-                    // Si Gutenberg está activo, insertamos como bloques nativos
                     if (typeof wp !== 'undefined' && wp.data && wp.data.dispatch('core/editor')) {
                         if (wp.blocks && typeof wp.blocks.rawHandler === 'function') {
                             var blocks = wp.blocks.rawHandler({ HTML: data.content });
@@ -96,11 +93,9 @@ class AICA_Meta_Box {
                         }
                         alert('¡Contenido generado e insertado con éxito en el editor!');
                     } else {
-                        // Fallback para el Editor Clásico de WordPress
                         var editorContent = document.getElementById('content');
                         if (editorContent) {
                             editorContent.value += "\n\n" + data.content;
-                            // Si TinyMCE está activo, actualizar la instancia visual
                             if (typeof tinymce !== 'undefined' && tinymce.get('content')) {
                                 tinymce.get('content').setContent(editorContent.value);
                             }
