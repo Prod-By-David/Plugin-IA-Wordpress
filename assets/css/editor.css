@@ -1,0 +1,81 @@
+/* Asistente de IA - estilos del editor (caja lateral y bloque) */
+
+.aica-box [hidden],
+.aica-block [hidden] {
+	display: none !important;
+}
+
+.aica-box .aica-field {
+	width: 100%;
+	margin-bottom: 10px;
+}
+
+.aica-box .aica-full {
+	width: 100%;
+	text-align: center;
+}
+
+.aica-box .aica-check {
+	display: block;
+}
+
+.aica-loading {
+	margin-top: 10px;
+	text-align: center;
+	color: #007cba;
+}
+
+.aica-message {
+	margin: 8px 0;
+	padding: 8px 10px;
+	border-left: 4px solid #007cba;
+	background: #f0f6fc;
+}
+
+.aica-message.aica-error {
+	border-left-color: #d63638;
+	background: #fcf0f1;
+}
+
+.aica-message.aica-ok {
+	border-left-color: #00a32a;
+	background: #edfaef;
+}
+
+.aica-preview {
+	max-height: 260px;
+	overflow: auto;
+	padding: 8px 10px;
+	border: 1px solid #c3c4c7;
+	background: #fff;
+	font-size: 13px;
+	line-height: 1.5;
+}
+
+.aica-preview h2,
+.aica-preview h3 {
+	font-size: 1.05em;
+	margin: 0.8em 0 0.4em;
+}
+
+.aica-block .aica-block-form {
+	width: 100%;
+}
+
+.aica-block .aica-actions {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 12px 0;
+}
+
+.aica-block .aica-preview {
+	max-height: 320px;
+}
+
+.aica-usage {
+	margin: 8px 0 0;
+	color: #757575;
+	font-size: 12px;
+}

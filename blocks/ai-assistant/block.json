@@ -1,0 +1,17 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 2,
+	"name": "aica/ai-assistant",
+	"title": "Asistente de IA",
+	"category": "widgets",
+	"icon": "edit",
+	"description": "Genera, optimiza el SEO o traduce contenido con IA sin salir del editor.",
+	"keywords": [ "ia", "ai", "seo", "traducir", "generar", "claude", "openai" ],
+	"textdomain": "ai-content-assistant",
+	"supports": {
+		"html": false,
+		"reusable": false
+	},
+	"editorScript": "aica-block-editor",
+	"editorStyle": "aica-editor"
+}

@@ -3,18 +3,30 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+/**
+ * Caja lateral «Asistente de IA» (botón) para el Editor Clásico y Gutenberg.
+ * El JavaScript vive en assets/js/aica-metabox.js (se carga con wp_enqueue_script).
+ */
 class AICA_Meta_Box {
 
     public function __construct() {
         add_action( 'add_meta_boxes', array( $this, 'add_ai_meta_box' ) );
     }
 
+    /**
+     * Tipos de contenido donde aparece la caja (filtrable con `aica_post_types`).
+     */
+    public static function post_types() {
+        $types = apply_filters( 'aica_post_types', array( 'post', 'page' ) );
+        return is_array( $types ) ? array_values( $types ) : array( 'post' );
+    }
+
     public function add_ai_meta_box() {
         add_meta_box(
             'aica_ai_assistant_box',
-            'Asistente de IA (Generador de Contenido)',
+            __( 'Asistente de IA (Generador de Contenido)', 'ai-content-assistant' ),
             array( $this, 'meta_box_html' ),
-            'post',
+            self::post_types(),
             'side',
             'high'
         );
@@ -22,76 +34,44 @@ class AICA_Meta_Box {
 
     public function meta_box_html( $post ) {
         ?>
-        <div id="aica-assistant-wrapper">
-            <p><strong>Acción de IA:</strong></p>
-            <select id="aica-action-type" style="width:100%; margin-bottom:10px;">
-                <option value="generate">Generar Borrador / Artículo</option>
-                <option value="seo">Optimizar SEO y Títulos</option>
-                <option value="translate">Traducir al Inglés</option>
+        <div id="aica-assistant-wrapper" class="aica-box">
+            <p><label for="aica-action-type"><strong><?php esc_html_e( 'Acción de IA:', 'ai-content-assistant' ); ?></strong></label></p>
+            <select id="aica-action-type" class="aica-field">
+                <?php foreach ( AICA_API_Handler::actions() as $value => $label ) : ?>
+                    <option value="<?php echo esc_attr( $value ); ?>"><?php echo esc_html( $label ); ?></option>
+                <?php endforeach; ?>
             </select>
 
-            <p><strong>Petición o Tema:</strong></p>
-            <textarea id="aica-prompt-input" rows="3" style="width:100%; margin-bottom:10px;" placeholder="Ej: Escribe sobre los beneficios del café orgánico..."></textarea>
+            <div id="aica-language-row" hidden>
+                <p><label for="aica-language"><strong><?php esc_html_e( 'Traducir a:', 'ai-content-assistant' ); ?></strong></label></p>
+                <select id="aica-language" class="aica-field">
+                    <?php foreach ( AICA_API_Handler::languages() as $value => $label ) : ?>
+                        <option value="<?php echo esc_attr( $value ); ?>"><?php echo esc_html( $label ); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
 
-            <button type="button" id="aica-generate-btn" class="button button-primary" style="width:100%;">Generar con IA</button>
-            
-            <div id="aica-loading" style="display:none; margin-top:10px; text-align:center; color:#007cba;">Generando contenido...</div>
+            <p><label for="aica-prompt-input"><strong><?php esc_html_e( 'Petición o tema:', 'ai-content-assistant' ); ?></strong></label></p>
+            <textarea id="aica-prompt-input" rows="3" class="aica-field" placeholder="<?php esc_attr_e( 'Ej: Escribe sobre los beneficios del café orgánico...', 'ai-content-assistant' ); ?>"></textarea>
+
+            <p><label class="aica-check"><input type="checkbox" id="aica-use-content" /> <?php esc_html_e( 'Usar el contenido actual de la entrada', 'ai-content-assistant' ); ?></label></p>
+
+            <p><button type="button" id="aica-generate-btn" class="button button-primary aica-full"><?php esc_html_e( 'Generar con IA', 'ai-content-assistant' ); ?></button></p>
+
+            <div id="aica-loading" class="aica-loading" role="status" hidden><?php esc_html_e( 'Generando contenido...', 'ai-content-assistant' ); ?></div>
+            <div id="aica-message" class="aica-message" role="alert" hidden></div>
+
+            <div id="aica-result-wrap" hidden>
+                <p><strong><?php esc_html_e( 'Resultado:', 'ai-content-assistant' ); ?></strong></p>
+                <div id="aica-result" class="aica-preview"></div>
+                <p>
+                    <button type="button" id="aica-insert-btn" class="button button-secondary"><?php esc_html_e( 'Insertar en el editor', 'ai-content-assistant' ); ?></button>
+                    <button type="button" id="aica-copy-btn" class="button"><?php esc_html_e( 'Copiar HTML', 'ai-content-assistant' ); ?></button>
+                </p>
+            </div>
+
+            <p id="aica-usage" class="description"></p>
         </div>
-
-        <script>
-        document.getElementById('aica-generate-btn').addEventListener('click', function() {
-            var prompt = document.getElementById('aica-prompt-input').value;
-            var action = document.getElementById('aica-action-type').value;
-            var loading = document.getElementById('aica-loading');
-
-            if (!prompt) {
-                alert('Por favor, escribe una petición.');
-                return;
-            }
-
-            loading.style.display = 'block';
-
-            fetch('<?php echo esc_url( rest_url( 'aica/v1/generate' ) ); ?>', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-WP-Nonce': '<?php echo wp_create_nonce( 'wp_rest' ); ?>'
-                },
-                body: JSON.stringify({ prompt: prompt, action: action })
-            })
-            .then(response => response.json())
-            .then(data => {
-                loading.style.display = 'none';
-                if (data.success) {
-                    // Si Gutenberg está activo, convertimos el contenido estructurado en bloques nativos
-                    if (wp.data && wp.data.dispatch('core/editor')) {
-                        if (wp.blocks && wp.blocks.rawHandler) {
-                            var blocks = wp.blocks.rawHandler({ HTML: data.content });
-                            wp.data.dispatch('core/editor').insertBlocks(blocks);
-                        } else {
-                            var block = wp.blocks.createBlock('core/paragraph', { content: data.content });
-                            wp.data.dispatch('core/editor').insertBlocks(block);
-                        }
-                        alert('¡Contenido generado e insertado con éxito en el editor!');
-                    } else {
-                        // Fallback para el Editor Clásico
-                        var editorContent = document.getElementById('content');
-                        if (editorContent) {
-                            editorContent.value += "\n\n" + data.content;
-                            alert('¡Contenido generado y añadido al final!');
-                        }
-                    }
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                loading.style.display = 'none';
-                alert('Error de conexión con el servidor.');
-                console.error(error);
-            });
-        });
-        </script>
         <?php
     }
 }
